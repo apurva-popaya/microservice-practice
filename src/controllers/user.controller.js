@@ -1,5 +1,5 @@
 import UserService from "../services/user.service.js";
-import { userSchema } from "../validation/user.validation.js";
+import { userSchema, contactSchema } from "../validation/user.validation.js";
 import { bulkUserSchema } from "../validation/bulkUser.validation.js";
 
 export const addUser = async (req, res) => {
@@ -31,6 +31,13 @@ export const addUser = async (req, res) => {
 
 export const getUserByContact = async (req, res) => {
   try {
+    const result = contactSchema.safeParse(req.params);
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.error.issues.map((err) => err.message),
+      });
+    }
 
     const { contact } = req.params;
     const user = await UserService.getUserByContact(contact);
@@ -83,6 +90,13 @@ export const updateUser = async(req,res) =>{
 
 export const deleteUser = async(req,res) =>{
   try{
+    const result = contactSchema.safeParse(req.params);
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.error.issues.map((err) => err.message),
+      });
+    }
     const { contact } = req.params;
 
     const user = await UserService.deleteUser(contact);
