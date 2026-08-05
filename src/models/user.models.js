@@ -19,6 +19,14 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+
+    contact_hash:{
+      type: String,
+      required: true,
+      unique: true,
+      index:true,
+    },
+
     org_name: {
       type: String,
       // required: true,

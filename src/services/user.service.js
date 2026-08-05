@@ -1,145 +1,180 @@
 import User from "../models/user.models.js";
+import {
+  encryptContact,
+  decryptContact,
+  hashContact,
+} from "../utils/crypto.js";
 
 class UserService {
-  async addUser(data) {
-    try{
-      const existingUser = await User.findOne({
-      contact: data.contact,
-    });
+  // async addUser(data) {
+  //   try{
+  //     const contactHash = hashContact(data.contact);
 
-    if(existingUser){
-      const err = new Error("User already exixts");
-      err.statusCode = 409;
-      throw err;
-    }
+  //     const existingUser = await User.findOne({
+  //       // contact: data.contact,
+  //       contact_hash: contactHash,
+  //     });
 
-    const user = await User.create(data);
+  //     if(existingUser){
+  //       const err = new Error("User already exixts");
+  //       err.statusCode = 409;
+  //       throw err;
+  //     }
 
-    return user;
-    }catch(err){
-      err.statusCode = err.statusCode || 500;
-      err.message = err.message || "unable to add the user";
-      throw err;
-    }
-  };
+  //     const encryptedContact = encryptContact(data.contact);
 
-  async getUserByContact(contact){
-    try{
-      const user = await User.findOne({ contact });
-      
-      if(!user){
+  //     const user = await User.create({
+  //       type: data.type,
+  //       name: data.name,
+  //       contact: encryptedContact,
+  //       contact_hash: contactHash,
+  //       org_name: data.org_name,
+  //       org_location: data.org_location
+  //     });
+
+  //     //user.contact = data.contact;
+
+  //     return user;
+  //   }catch(err){
+  //     err.statusCode = err.statusCode || 500;
+  //     err.message = err.message || "unable to add the user";
+  //     throw err;
+  //   }
+  // };
+
+  async getUserById(id) {
+    try {
+      const user = await User.findById(id).select("-contact_hash");
+
+      if (!user) {
         const err = new Error("User not found");
         err.statusCode = 404;
         throw err;
       }
-      
+
+      user.contact = decryptContact(user.contact);
+
       return user;
-    }catch(err){
+    } catch (err) {
       err.statusCode = err.statusCode || 500;
       err.message = err.message || "failed to get user";
       throw err;
     }
-  };
+  }
 
-  async updateUser(contact, data){
-    try{
-      const existingUser = await User.findOne({contact})
-      if(!existingUser){
+  async updateUser(id, data) {
+    try {
+      const existingUser = await User.findById(id);
+
+      if (!existingUser) {
         const err = new Error("User not found");
         err.statusCode = 404;
         throw err;
       }
-      const user = await User.findOneAndUpdate(
-        { contact: contact },
-        data,
-        { new: true }
+
+      const updateData = {
+        type: data.type,
+        name: data.name,
+        contact: existingUser.contact,
+        contact_hash: existingUser.contact_hash,
+        org_name: data.org_name,
+        org_location: data.org_location,
+      };
+
+      const oldContact = decryptContact(existingUser.contact);
+
+      if (oldContact !== data.contact) {
+        const newContactHash = hashContact(data.contact);
+        updateData.contact = encryptContact(data.contact);
+        updateData.contact_hash = newContactHash;
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(
+        id , 
+        updateData, 
+        {new: true,}
       );
 
-      return user;
+      //updatedUser.contact = decryptContact(updatedUser.contact);
 
-    }catch(err){
+      return updatedUser;
+    } catch (err) {
       err.statusCode = err.statusCode || 500;
       err.message = err.message || "failed to update user";
       throw err;
     }
-  };
+  }
 
-  async deleteUser(contact){
-    try{
-      const existingUser = await User.findOne({contact})
-      if(!existingUser){
+  async deleteUser(id) {
+    try {
+      const existingUser = await User.findById(id);
+      if (!existingUser) {
         const err = new Error("User not found");
         err.statusCode = 404;
         throw err;
       }
-      
-      const user = await User.findOneAndDelete({
-        contact,
-      });
 
-    return user;
+      const user = await User.findByIdAndDelete(id);
 
-    }catch(err){
+      return user;
+
+    } catch (err) {
       err.statusCode = err.statusCode || 500;
       err.message = err.message || "failed to delete user";
       throw err;
     }
-  };
+  }
 
-
-  async addBulkUsers(payload){
-    try{
+  async addBulkUsers(payload) {
+    try {
       const { data, org_name, org_location } = payload;
 
-      // const uniqueUsers = new Set();
-      // for(const user of data){
-      //   const key = `${user.type}-${user.contact}`;
-
-      //   if(uniqueUsers.has(key)){
-      //     const err = new Error("User already exists");
-      //     err.statusCode = 409;
-      //     throw err;
-      //   }
-      //   uniqueUsers.add(key);
-      // }
-
       const users = await Promise.all(
-        data.map(async (user) =>{
-            const existingUser = await User.findOne({
+        data.map(async (user) => {
+          const contactHash = hashContact(user.contact);
+          const existingUser = await User.findOne({
             type: user.type,
-            contact: user.contact, 
+            contact_hash: contactHash,
           });
 
-          if(existingUser){
+          if (existingUser) {
             const err = new Error("User already exists");
             err.statusCode = 409;
             throw err;
           }
 
+          const encryptedContact = encryptContact(user.contact);
+
           return {
             type: user.type,
             name: user.name,
-            contact: user.contact,
+            contact: encryptedContact,
+            contact_hash: contactHash,
             org_name,
             org_location,
           };
-        })
-      )
-
-      // const users = data.map((user)=>{
-      //   return {
-      //      type: user.type, name: user.name, contact: user.contact, org_name: org_name, org_location: org_location,
-      //   };
-      // });
+        }),
+      );
 
       return await User.insertMany(users);
-      
-    }catch(err){
+    } catch (err) {
       err.statusCode = err.statusCode || 500;
       err.message = err.message || "failed to add users";
       throw err;
     }
   }
-};
+}
 
 export default new UserService();
+
+// const uniqueUsers = new Set();
+// for(const user of data){
+//   const key = `${user.type}-${user.contact}`;
+
+//   if(uniqueUsers.has(key)){
+//     const err = new Error("User already exists");
+//     err.statusCode = 409;
+//     throw err;
+//   }
+//   uniqueUsers.add(key);
+// }
