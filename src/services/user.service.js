@@ -3,45 +3,10 @@ import {
   encryptContact,
   decryptContact,
   hashContact,
-} from "../utils/crypto.js";
+} from "../utils/encryption.js";
 
 class UserService {
-  // async addUser(data) {
-  //   try{
-  //     const contactHash = hashContact(data.contact);
-
-  //     const existingUser = await User.findOne({
-  //       // contact: data.contact,
-  //       contact_hash: contactHash,
-  //     });
-
-  //     if(existingUser){
-  //       const err = new Error("User already exixts");
-  //       err.statusCode = 409;
-  //       throw err;
-  //     }
-
-  //     const encryptedContact = encryptContact(data.contact);
-
-  //     const user = await User.create({
-  //       type: data.type,
-  //       name: data.name,
-  //       contact: encryptedContact,
-  //       contact_hash: contactHash,
-  //       org_name: data.org_name,
-  //       org_location: data.org_location
-  //     });
-
-  //     //user.contact = data.contact;
-
-  //     return user;
-  //   }catch(err){
-  //     err.statusCode = err.statusCode || 500;
-  //     err.message = err.message || "unable to add the user";
-  //     throw err;
-  //   }
-  // };
-
+  
   async getUserById(id) {
     try {
       const user = await User.findById(id).select("-contact_hash");
@@ -148,6 +113,7 @@ class UserService {
           return {
             type: user.type,
             name: user.name,
+            country_code: user.country_code,
             contact: encryptedContact,
             contact_hash: contactHash,
             org_name,
@@ -163,9 +129,80 @@ class UserService {
       throw err;
     }
   }
+
+  async getAllUsers(page, limit){
+    try{
+      const skip = (page - 1) * limit;
+      const users = await User.find().select("-contact_hash").skip(skip).limit(limit);
+      // users.contact = decryptContact(users.contact);
+      users.forEach((user)=>{
+        user.contact = decryptContact(user.contact);
+      });
+      return users;
+
+    }catch(err){
+      err.statusCode = err.statusCode || 500;
+      err.message = err.message || "failed to get all users";
+      throw err;
+    }
+  }
 }
 
 export default new UserService();
+
+
+
+
+
+
+
+
+
+// async addUser(data) {
+  //   try{
+  //     const contactHash = hashContact(data.contact);
+
+  //     const existingUser = await User.findOne({
+  //       // contact: data.contact,
+  //       contact_hash: contactHash,
+  //     });
+
+  //     if(existingUser){
+  //       const err = new Error("User already exixts");
+  //       err.statusCode = 409;
+  //       throw err;
+  //     }
+
+  //     const encryptedContact = encryptContact(data.contact);
+
+  //     const user = await User.create({
+  //       type: data.type,
+  //       name: data.name,
+  //       contact: encryptedContact,
+  //       contact_hash: contactHash,
+  //       org_name: data.org_name,
+  //       org_location: data.org_location
+  //     });
+
+  //     //user.contact = data.contact;
+
+  //     return user;
+  //   }catch(err){
+  //     err.statusCode = err.statusCode || 500;
+  //     err.message = err.message || "unable to add the user";
+  //     throw err;
+  //   }
+  // };
+
+
+
+
+
+
+
+
+
+
 
 // const uniqueUsers = new Set();
 // for(const user of data){

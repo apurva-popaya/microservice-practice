@@ -2,35 +2,8 @@ import UserService from "../services/user.service.js";
 import { userSchema, contactSchema } from "../validation/user.validation.js";
 import { bulkUserSchema } from "../validation/bulkUser.validation.js";
 
-// export const addUser = async (req, res) => {
-//   try {
-//     const result = userSchema.safeParse(req.body);
-//     if (!result.success) {
-//       return res.status(400).json({
-//         success: false,
-//         message: result.error.issues.map((err) => err.message),
-//         // message: result.error.issues[0].message,
-//       });
-//     }
-
-//     const user = await UserService.addUser(req.body);
-
-//     return res.status(201).json({
-//       success: true,
-//       message: "Data added successfully",
-//       //data: user,
-//     });
-//   } catch (err) {
-//     return res.status(err.statusCode || 500).json({
-//       success: false,
-//       message: err.message || "Internal Server Error",
-//     });
-//   }
-// };
-
 export const getUserById = async (req, res) => {
   try {
-
     const { id } = req.params;
     const user = await UserService.getUserById(id);
 
@@ -51,10 +24,10 @@ export const updateUser = async (req, res) => {
   try {
     const result = userSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        message: result.error.issues.map((err) => err.message),
-      });
+      const err = new Error();
+      err.statusCode = 400;
+      err.message = result.error.issues.map((issue) => issue.message);
+      throw err;
     }
 
     const { id } = req.params;
@@ -69,7 +42,7 @@ export const updateUser = async (req, res) => {
   } catch (err) {
     return res.status(err.statusCode || 500).json({
       success: false,
-      message: err.message,
+      error: err.message || [],
     });
   }
 };
@@ -98,13 +71,10 @@ export const addBulkUsers = async (req, res) => {
     const result = bulkUserSchema.safeParse(req.body);
 
     if (!result.success) {
-      return res.status(400).json({
-        success: false,
-
-        errors: result.error.issues.map((issue) => issue.message),
-
-        //errors: result.error.issues.map((issue) => issue.message).join(", "),
-      });
+      const err = new Error("Validation failed");
+      err.statusCode = 400;
+      err.message = result.error.issues.map((issue) => issue.message);
+      throw err;
     }
 
     const users = await UserService.addBulkUsers(req.body);
@@ -121,6 +91,68 @@ export const addBulkUsers = async (req, res) => {
     });
   }
 };
+
+export const getAllUsers = async(req,res) => {
+  try{
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+
+    const users = await UserService.getAllUsers(page, limit);
+
+    return res.status(200).json({
+      success: true,
+      message: "Users fetched successfully",
+      data: users,
+    });
+
+  }catch(err){
+    return res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+
+
+
+
+
+
+
+// export const addUser = async (req, res) => {
+//   try {
+//     const result = userSchema.safeParse(req.body);
+//     if (!result.success) {
+//       return res.status(400).json({
+//         success: false,
+//         message: result.error.issues.map((err) => err.message),
+//         // message: result.error.issues[0].message,
+//       });
+//     }
+
+//     const user = await UserService.addUser(req.body);
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Data added successfully",
+//       //data: user,
+//     });
+//   } catch (err) {
+//     return res.status(err.statusCode || 500).json({
+//       success: false,
+//       message: err.message || "Internal Server Error",
+//     });
+//   }
+// };
+
+
+
+
+
+
+
+
 
 
 

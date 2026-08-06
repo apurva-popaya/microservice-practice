@@ -14,6 +14,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    country_code:{
+      type: String,
+      required: true,
+      trim: true,
+    },
+
     contact: {
       type: String,
       required: true,
