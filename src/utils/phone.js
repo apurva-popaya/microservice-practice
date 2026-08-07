@@ -1,44 +1,31 @@
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
-export const validatePhoneNumber = (countryCode, contact) => {
-  const errors = [];
+export const normalizePhoneNumber = (contact) => {
+  const phone = parsePhoneNumberFromString(contact, "IN");
+  return phone ? phone.number : contact;
+};
 
-  if (!countryCode || !/^\+\d{1,4}$/.test(countryCode)) {
-    errors.push({
-      field: "country_code",
-      message: "Invalid country code",
-    });
-  }
-
-  if (!contact || !/^\d{10}$/.test(contact)) {
-    errors.push({
-      field: "contact",
-      message: "Invalid contact number",
-    });
-  }
-
-  if (errors.length === 0) {
-    const phone = parsePhoneNumberFromString(
-      `${countryCode}${contact}`
-    );
-
-    if (!phone || !phone.isValid()) {
-      errors.push({
+export const validatePhoneNumber = (contact) => {
+  const phone = parsePhoneNumberFromString(contact, "IN");
+  if (!phone || !phone.isValid()) {
+    return [
+      {
         field: "contact",
-        message: "Invalid Phone number",
-      });
-    }
-    if (
-      countryCode === "+91" &&
-      !/^[7-9]\d{9}$/.test(contact)
+        message: "Invalid contact number",
+      },
+    ];
+  }
+  if (
+        phone.country === "IN" &&
+        !/^[7-9]\d{9}$/.test(phone.nationalNumber)
     ) {
-      errors.push({
-        field: "contact",
-        message:
-          "Invalid Contact Number",
-      });
+        return [
+            {
+                field: "contact",
+                message:
+                    "Indian mobile numbers must start with 7, 8 or 9",
+            },
+        ];
     }
-  }
-  
-  return errors;
+  return [];
 };

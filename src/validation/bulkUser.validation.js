@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { validatePhoneNumber } from "../utils/phone.js";
+import { normalizePhoneNumber ,validatePhoneNumber } from "../utils/phone.js";
 
 const singleUserSchema = z
   .object({
@@ -22,14 +22,11 @@ const singleUserSchema = z
     contact: z
       .string({error: "Contact is required",})
       .trim(),
-
-    country_code: z
-      .string({error: "Country code is required",})
-      .trim(),
   })
 
   .superRefine((data, ctx) => {
-    const errors = validatePhoneNumber(data.country_code, data.contact);
+    const normalizeContact = normalizePhoneNumber(data.contact);
+    const errors = validatePhoneNumber(normalizeContact);
 
     errors.forEach((error) => {
       ctx.addIssue({
