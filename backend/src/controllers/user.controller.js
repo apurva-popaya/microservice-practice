@@ -1,6 +1,6 @@
 import UserService from "../services/user.service.js";
 import { userSchema, contactSchema } from "../validation/user.validation.js";
-import { bulkUserSchema } from "../validation/bulkUser.validation.js";
+import { bulkUserSchema, updateUserSchema } from "../validation/bulkUser.validation.js";
 
 export const getUserById = async (req, res) => {
   try {
@@ -22,7 +22,7 @@ export const getUserById = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   try {
-    const result = userSchema.safeParse(req.body);
+    const result = updateUserSchema.safeParse(req.body);
     if (!result.success) {
       const err = new Error();
       err.statusCode = 400;
@@ -96,8 +96,9 @@ export const getAllUsers = async(req,res) => {
   try{
     const page = Number(req.query.page);
     const limit = Number(req.query.limit);
+    const search = req.query.search;
 
-    const users = await UserService.getAllUsers(page, limit);
+    const users = await UserService.getAllUsers(page, limit, search);
 
     return res.status(200).json({
       success: true,

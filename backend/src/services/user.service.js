@@ -1,9 +1,8 @@
 import User from "../models/user.models.js";
 import { hashContact } from "../utils/encryption.js";
-import { normalizePhoneNumber } from "../utils/phone.js";
+import { normalizePhoneNumber, validatePhoneNumber } from "../utils/phone.js";
 
 class UserService {
-  
   async getUserById(id) {
     try {
       const user = await User.findById(id).select("-contact_hash");
@@ -32,17 +31,34 @@ class UserService {
         throw err;
       }
 
-      user.type = data.type;
-      user.name = data.name;
-      user.org_name = data.org_name;
-      user.org_location = data.org_location;
+      if (data.type !== undefined) {
+        user.type = data.type;
+      }
 
-      const oldContact = normalizePhoneNumber(user.contact);
-      const newContact = normalizePhoneNumber(data.contact);
+      if (data.name !== undefined) {
+        user.name = data.name;
+      }
 
-      if (oldContact !== newContact) {
-        user.contact = newContact; 
-        user.contact_hash = hashContact(newContact);
+      if (data.listingId !== undefined) {
+        user.listingId = data.listingId;
+      }
+
+      if (data.brokerId !== undefined) {
+        user.brokerId = data.brokerId;
+      }
+
+      if (data.firmId !== undefined) {
+        user.firmId = data.firmId;
+      }
+
+      if (data.contact !== undefined) {
+        const oldContact = normalizePhoneNumber(user.contact);
+        const newContact = normalizePhoneNumber(data.contact);
+
+        if (oldContact !== newContact) {
+          user.contact = newContact;
+          user.contact_hash = hashContact(newContact);
+        }
       }
 
       await user.save();
@@ -76,7 +92,7 @@ class UserService {
 
   async addBulkUsers(payload) {
     try {
-      const { data, org_name, org_location } = payload;
+      const { data, listingId, brokerId, firmId } = payload;
 
       const users = await Promise.all(
         data.map(async (user) => {
@@ -85,6 +101,7 @@ class UserService {
           const existingUser = await User.findOne({
             type: user.type,
             contact_hash: contactHash,
+            listingId: user.listingId,
           });
 
           if (existingUser) {
@@ -98,8 +115,9 @@ class UserService {
             name: user.name,
             contact: normalizedContact,
             contact_hash: contactHash,
-            org_name,
-            org_location,
+            listingId,
+            brokerId,
+            firmId,
           };
         }),
       );
@@ -112,21 +130,70 @@ class UserService {
     }
   }
 
-  async getAllUsers(page, limit) {
+  async getAllUsers(page, limit, search) {
     try {
       page = Number(page) || 1;
       limit = Number(limit) || 10;
+
       if (limit > 10) {
         limit = 10;
       }
-      //limit = Math.min(limit, 10);
+
       const skip = (page - 1) * limit;
-      const totalUsers = await User.countDocuments();
-      const users = await User.find()
+
+      const searchableFields = [
+        //"id",
+        "type",
+        "name",
+        // "org_name",
+        // "org_location",
+        // "createdAt",
+        // "updatedAt"
+      ];
+
+      const filter = {};
+
+      if (search) {
+        const orConditions = [];
+
+        const searchValue = search.trim();
+
+        const escapedSearch = searchValue.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&",
+        );
+
+        searchableFields.forEach((field) => {
+          orConditions.push({
+            [field]: {
+              $regex: escapedSearch,
+              $options: "i",
+            },
+          });
+        });
+
+        if (validatePhoneNumber(searchValue).length === 0) {
+          const normalizedContact = normalizePhoneNumber(searchValue);
+          const contactHash = hashContact(normalizedContact);
+
+          orConditions.push({
+            contact_hash: contactHash,
+          });
+        }
+
+        filter.$or = orConditions;
+      }
+
+      const totalUsers = await User.countDocuments(filter);
+
+      const users = await User.find(filter)
         .select("-contact_hash")
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
+
       const totalPages = Math.ceil(totalUsers / limit);
+
       return {
         totalUsers,
         currentPage: page,

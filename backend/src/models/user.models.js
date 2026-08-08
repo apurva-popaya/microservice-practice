@@ -35,15 +35,20 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
 
-    org_name: {
+    listingId: {
       type: String,
       required: true,
     },
 
-    org_location: {
+    brokerId: {
       type: String,
       required: true,
     },
+
+    firmId:{
+      type: String,
+      required: true,
+    }
   },
   {
     timestamps: true,
@@ -60,6 +65,7 @@ userSchema.index(
     {
         type: 1,
         contact_hash: 1,
+        listingId: 1
     },
     {
         unique: true,
