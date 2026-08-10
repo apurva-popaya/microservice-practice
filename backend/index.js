@@ -4,12 +4,14 @@ dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 import "dotenv/config";
 import express from "express";
+import cors from "cors";
 import connectDB from "./src/config/db.js";
 import userRoutes from "./src/routes/user.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(cors());
 app.use(express.json());
 app.use("/v1", userRoutes);
 

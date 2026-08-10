@@ -101,7 +101,7 @@ class UserService {
           const existingUser = await User.findOne({
             type: user.type,
             contact_hash: contactHash,
-            listingId: user.listingId,
+            listingId,
           });
 
           if (existingUser) {

@@ -42,7 +42,7 @@ export const updateUser = async (req, res) => {
   } catch (err) {
     return res.status(err.statusCode || 500).json({
       success: false,
-      error: err.message || [],
+      message: err.message || [],
     });
   }
 };
